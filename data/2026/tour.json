@@ -10,7 +10,7 @@
       "finish": "Barcelona",
       "type": "itt",
       "distance_km": 19.7,
-      "image": "stage-01.png"
+      "image": "stage-01.jpg"
     },
     {
       "stage": 2,
@@ -19,7 +19,7 @@
       "finish": "Barcelona",
       "type": "hilly",
       "distance_km": 178,
-      "image": "stage-02.png"
+      "image": "stage-02.jpg"
     },
     {
       "stage": 3,
@@ -28,7 +28,7 @@
       "finish": "Les Angles",
       "type": "mountain",
       "distance_km": 196,
-      "image": "stage-03.png"
+      "image": "stage-03.jpg"
     },
     {
       "stage": 4,
@@ -37,7 +37,7 @@
       "finish": "Foix",
       "type": "hilly",
       "distance_km": 182,
-      "image": "stage-04.png"
+      "image": "stage-04.jpg"
     },
     {
       "stage": 5,
@@ -46,7 +46,7 @@
       "finish": "Pau",
       "type": "flat",
       "distance_km": 158,
-      "image": "stage-05.png"
+      "image": "stage-05.jpg"
     },
     {
       "stage": 6,
@@ -55,7 +55,7 @@
       "finish": "Gavarnie-Gèdre",
       "type": "mountain",
       "distance_km": 186,
-      "image": "stage-06.png"
+      "image": "stage-06.jpg"
     },
     {
       "stage": 7,
@@ -64,7 +64,7 @@
       "finish": "Bordeaux",
       "type": "flat",
       "distance_km": 175,
-      "image": "stage-07.png"
+      "image": "stage-07.jpg"
     },
     {
       "stage": 8,
@@ -73,7 +73,7 @@
       "finish": "Bergerac",
       "type": "flat",
       "distance_km": 182,
-      "image": "stage-08.png"
+      "image": "stage-08.jpg"
     },
     {
       "stage": 9,
@@ -82,7 +82,7 @@
       "finish": "Ussel",
       "type": "hilly",
       "distance_km": 185,
-      "image": "stage-09.png"
+      "image": "stage-09.jpg"
     },
     {
       "stage": 10,
@@ -91,7 +91,7 @@
       "finish": "Le Lioran",
       "type": "mountain",
       "distance_km": 167,
-      "image": "stage-10.png"
+      "image": "stage-10.jpg"
     },
     {
       "stage": 11,
@@ -100,7 +100,7 @@
       "finish": "Nevers",
       "type": "flat",
       "distance_km": 161,
-      "image": "stage-11.png"
+      "image": "stage-11.jpg"
     },
     {
       "stage": 12,
@@ -109,7 +109,7 @@
       "finish": "Chalon-sur-Saône",
       "type": "flat",
       "distance_km": 181,
-      "image": "stage-12.png"
+      "image": "stage-12.jpg"
     },
     {
       "stage": 13,
@@ -118,7 +118,7 @@
       "finish": "Belfort",
       "type": "hilly",
       "distance_km": 205,
-      "image": "stage-13.png"
+      "image": "stage-13.jpg"
     },
     {
       "stage": 14,
@@ -127,7 +127,7 @@
       "finish": "Le Markstein Fellering",
       "type": "mountain",
       "distance_km": 155,
-      "image": "stage-14.png"
+      "image": "stage-14.jpg"
     },
     {
       "stage": 15,
@@ -136,7 +136,7 @@
       "finish": "Plateau de Solaison",
       "type": "mountain",
       "distance_km": 184,
-      "image": "stage-15.png"
+      "image": "stage-15.jpg"
     },
     {
       "stage": 16,
@@ -145,7 +145,7 @@
       "finish": "Thonon-les-Bains",
       "type": "itt",
       "distance_km": 26,
-      "image": "stage-16.png"
+      "image": "stage-16.jpg"
     },
     {
       "stage": 17,
@@ -154,7 +154,7 @@
       "finish": "Voiron",
       "type": "flat",
       "distance_km": 175,
-      "image": "stage-17.png"
+      "image": "stage-17.jpg"
     },
     {
       "stage": 18,
@@ -163,7 +163,7 @@
       "finish": "Orcières-Merlette",
       "type": "mountain",
       "distance_km": 185,
-      "image": "stage-18.png"
+      "image": "stage-18.jpg"
     },
     {
       "stage": 19,
@@ -172,7 +172,7 @@
       "finish": "Alpe d'Huez",
       "type": "mountain",
       "distance_km": 128,
-      "image": "stage-19.png"
+      "image": "stage-19.jpg"
     },
     {
       "stage": 20,
@@ -181,7 +181,7 @@
       "finish": "Alpe d'Huez",
       "type": "mountain",
       "distance_km": 171,
-      "image": "stage-20.png"
+      "image": "stage-20.jpg"
     },
     {
       "stage": 21,
@@ -190,7 +190,7 @@
       "finish": "Paris (Champs-Élysées)",
       "type": "flat",
       "distance_km": 130,
-      "image": "stage-21.png"
+      "image": "stage-21.jpg"
     }
   ]
 }
