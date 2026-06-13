@@ -3,19 +3,68 @@ TRMNL Grand Tour Stage Profile — API Server
 Serves current/next cycling grand tour stage profile data for LaraPaper.
 """
 
+import hashlib
 import json
 import os
 from datetime import date
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+import numpy as np
+from flask import Flask, jsonify, request, send_file, send_from_directory
+from PIL import Image
 
 app = Flask(__name__)
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 IMAGES_DIR = os.environ.get("IMAGES_DIR", "/images")
+CACHE_DIR = os.environ.get("CACHE_DIR", "/cache")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 FAKE_TODAY = os.environ.get("FAKE_TODAY")  # optional YYYY-MM-DD override for testing
+
+# E-ink processing: ASO yellow elevation fill is too close to white in
+# greyscale (~215/255) and disappears on 4-bit e-ink panels. Recolour it
+# to mid-grey so the profile fill remains visible.
+EINK_YELLOW_REPLACEMENT = (100, 100, 100)
+
+
+def process_for_eink(src_path, dst_path):
+    """
+    Recolour yellow elevation-profile fill to mid-grey for e-ink visibility.
+
+    Detects ASO-yellow pixels (high R, high G, low B) and replaces them
+    with a mid-grey that survives 4-bit e-ink quantization while leaving
+    white background, black text, and other coloured elements untouched.
+    """
+    img = Image.open(src_path).convert("RGB")
+    arr = np.array(img).astype(np.float32)
+
+    r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+    yellow_mask = (r > 180) & (g > 160) & (b < 150) & ((r - b) > 60) & ((g - b) > 60)
+
+    arr[yellow_mask] = EINK_YELLOW_REPLACEMENT
+    Image.fromarray(arr.astype(np.uint8)).save(dst_path)
+
+
+def get_eink_image_path(filepath):
+    """
+    Return the path to an e-ink-processed version of the requested image,
+    generating and caching it on first request. Returns None if the source
+    image doesn't exist.
+    """
+    src_path = Path(IMAGES_DIR) / filepath
+    if not src_path.is_file():
+        return None
+
+    # Cache key includes source mtime so updated source images bust the cache
+    mtime = int(src_path.stat().st_mtime)
+    cache_key = hashlib.sha1(f"{filepath}:{mtime}".encode()).hexdigest()
+    cache_path = Path(CACHE_DIR) / f"{cache_key}.png"
+
+    if not cache_path.is_file():
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        process_for_eink(src_path, cache_path)
+
+    return cache_path
 
 
 def resolve_today(override=None):
@@ -177,6 +226,20 @@ def api_stage():
 
 @app.route("/images/<path:filepath>")
 def serve_image(filepath):
+    try:
+        cache_path = get_eink_image_path(filepath)
+        if cache_path is None:
+            return jsonify({"status": "error", "message": "Image not found"}), 404
+        return send_file(cache_path, mimetype="image/png")
+    except Exception as e:
+        # Fall back to serving the original if processing fails for any reason
+        app.logger.error(f"E-ink processing failed for {filepath}: {e}")
+        return send_from_directory(IMAGES_DIR, filepath)
+
+
+@app.route("/images/original/<path:filepath>")
+def serve_original_image(filepath):
+    """Serve the unprocessed source image, e.g. for debugging."""
     return send_from_directory(IMAGES_DIR, filepath)
 
 
