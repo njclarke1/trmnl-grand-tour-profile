@@ -8,13 +8,28 @@ import os
 from datetime import date
 from pathlib import Path
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(__name__)
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 IMAGES_DIR = os.environ.get("IMAGES_DIR", "/images")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
+FAKE_TODAY = os.environ.get("FAKE_TODAY")  # optional YYYY-MM-DD override for testing
+
+
+def resolve_today(override=None):
+    """
+    Determine 'today' for the purposes of stage selection.
+
+    Precedence: explicit override (query param) > FAKE_TODAY env var > real date.
+    Raises ValueError if override/env value isn't a valid YYYY-MM-DD date.
+    """
+    if override:
+        return date.fromisoformat(override)
+    if FAKE_TODAY:
+        return date.fromisoformat(FAKE_TODAY)
+    return date.today()
 
 
 def load_schedules():
@@ -75,9 +90,10 @@ def make_response(status, stage, countdown_days=None, include_image=True):
     }
 
 
-def get_current_stage():
+def get_current_stage(today=None):
     """Core logic: determine which stage to display today."""
-    today = date.today()
+    if today is None:
+        today = resolve_today()
     schedules = load_schedules()
 
     if not schedules:
@@ -142,7 +158,19 @@ def get_current_stage():
 @app.route("/api/stage")
 def api_stage():
     try:
-        return jsonify(get_current_stage())
+        override = request.args.get("date")
+        today = resolve_today(override)
+        result = get_current_stage(today)
+        result["_today"] = today.isoformat()
+        if override:
+            result["_date_source"] = "query_param"
+        elif FAKE_TODAY:
+            result["_date_source"] = "FAKE_TODAY_env"
+        else:
+            result["_date_source"] = "real"
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"status": "error", "message": f"Invalid date: {e}"}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
