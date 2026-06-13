@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+venv/
+
+# Keep example data, but real tour data is user-managed
+# Uncomment the next line if you don't want to track your stage images in git:
+# images/
