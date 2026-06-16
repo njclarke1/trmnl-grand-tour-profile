@@ -7,8 +7,4 @@ docs/BUILD-AND-SHIP.md
 images/**/*.jpg
 images/**/*.jpeg
 images/**/*.png
-# Real tour schedule data is user-managed
-data/**/tour.json
-data/**/giro.json
-data/**/vuelta.json
 !**/.gitkeep
