@@ -4,12 +4,11 @@ __pycache__/
 venv/
 docs/BUILD-AND-SHIP.md
 # Stage profile images are copyright ASO - download from official tour websites
-images/2026/
-images/2027/
-images/2028/
+images/**/*.jpg
+images/**/*.jpeg
+images/**/*.png
 # Real tour schedule data is user-managed
-data/2026/
-data/2027/
-data/2028/
-
+data/**/tour.json
+data/**/giro.json
+data/**/vuelta.json
 !**/.gitkeep
