@@ -39,21 +39,24 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
-    height: 40px;
-    min-height: 40px;
+    height: 52px;
+    min-height: 52px;
     flex-shrink: 0;
+    position: relative;
   }
 
   .tour-abbr {
-    font-size: 26px;
+    font-size: 40px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
-    min-width: 80px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .stage-number {
-    font-size: 26px;
+    font-size: 36px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -61,7 +64,7 @@
 
   .badge {
     display: inline-block;
-    font-size: 14px;
+    font-size: 28px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -72,9 +75,9 @@
   }
 
   .stage-date {
-    font-size: 22px;
+    font-size: 36px;
     font-weight: 400;
-    color: #333;
+    color: #999;
     text-align: right;
     letter-spacing: 0.5px;
   }
@@ -97,22 +100,23 @@
 
   .side-text {
     position: absolute;
-    font-size: 16px;
-    font-weight: 400;
-    color: #555;
-    letter-spacing: 1px;
+    font-size: 36px;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: 3px;
     white-space: nowrap;
+    text-transform: uppercase;
   }
 
   .side-text-left {
-    left: 6px;
+    left: 36px;
     top: 50%;
     transform: translateX(-50%) translateY(-50%) rotate(-90deg);
     transform-origin: center center;
   }
 
   .side-text-right {
-    right: 6px;
+    right: 36px;
     top: 50%;
     transform: translateX(50%) translateY(-50%) rotate(90deg);
     transform-origin: center center;
@@ -248,7 +252,7 @@
     </div>
     <div class="profile-container">
       @if (!empty($start_time))
-        <span class="side-text side-text-left">START {{ $start_time }} BST</span>
+        <span class="side-text side-text-left">{{ $start_time }} BST</span>
       @endif
       <img src="{{ $image_url }}" class="profile-image" alt="Stage {{ $stage }} profile" />
       @if (!empty($est_finish))

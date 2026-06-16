@@ -30,22 +30,35 @@ EINK_YELLOW_REPLACEMENT = (100, 100, 100)
 def process_for_eink(src_path, dst_path):
     """
     Process stage profile image for e-ink display:
-    1. Recolour ASO-yellow elevation fill to mid-grey (visible on 4-bit e-ink)
-    2. Apply unsharp mask to sharpen fine text/line detail before e-ink dithering
-       softens it — compensates for the display's inherent blur.
+
+    1. Context-aware yellow recolouring:
+       - Yellow pixels on a light background (elevation fill) → mid-grey
+         so the profile shape is visible on e-ink (yellow ≈ white in greyscale)
+       - Yellow pixels near a dark background (km distance markers in the
+         black bar) → white so they remain legible on the black bar
+    2. Unsharp mask to sharpen fine text/line detail before e-ink dithering
+       softens it.
     """
     from PIL import ImageFilter
+    from scipy.ndimage import binary_dilation
 
     img = Image.open(src_path).convert("RGB")
     arr = np.array(img).astype(np.float32)
 
-    # Step 1: yellow → mid-grey
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-    yellow_mask = (r > 180) & (g > 160) & (b < 150) & ((r - b) > 60) & ((g - b) > 60)
-    arr[yellow_mask] = EINK_YELLOW_REPLACEMENT
 
-    # Step 2: unsharp mask — radius 1.5, strength 1.8, threshold 3
-    # Conservative settings: sharpens fine lines/text without haloing
+    # Detect ASO yellow pixels
+    yellow_mask = (r > 180) & (g > 160) & (b < 150) & ((r - b) > 60) & ((g - b) > 60)
+
+    # Detect dark (black bar) regions and dilate to find nearby yellow pixels
+    dark_mask = (r < 60) & (g < 60) & (b < 60)
+    dark_nearby = binary_dilation(dark_mask, iterations=8)
+
+    # Yellow near dark background = km marker text → white (legible on black)
+    # Yellow on light background = elevation fill → mid-grey (visible on white)
+    arr[yellow_mask & dark_nearby] = [255, 255, 255]
+    arr[yellow_mask & ~dark_nearby] = EINK_YELLOW_REPLACEMENT
+
     img_processed = Image.fromarray(arr.astype(np.uint8))
     img_sharpened = img_processed.filter(
         ImageFilter.UnsharpMask(radius=1.5, percent=180, threshold=3)
