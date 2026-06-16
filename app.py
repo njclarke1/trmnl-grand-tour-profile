@@ -29,20 +29,28 @@ EINK_YELLOW_REPLACEMENT = (100, 100, 100)
 
 def process_for_eink(src_path, dst_path):
     """
-    Recolour yellow elevation-profile fill to mid-grey for e-ink visibility.
-
-    Detects ASO-yellow pixels (high R, high G, low B) and replaces them
-    with a mid-grey that survives 4-bit e-ink quantization while leaving
-    white background, black text, and other coloured elements untouched.
+    Process stage profile image for e-ink display:
+    1. Recolour ASO-yellow elevation fill to mid-grey (visible on 4-bit e-ink)
+    2. Apply unsharp mask to sharpen fine text/line detail before e-ink dithering
+       softens it — compensates for the display's inherent blur.
     """
+    from PIL import ImageFilter
+
     img = Image.open(src_path).convert("RGB")
     arr = np.array(img).astype(np.float32)
 
+    # Step 1: yellow → mid-grey
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
     yellow_mask = (r > 180) & (g > 160) & (b < 150) & ((r - b) > 60) & ((g - b) > 60)
-
     arr[yellow_mask] = EINK_YELLOW_REPLACEMENT
-    Image.fromarray(arr.astype(np.uint8)).save(dst_path)
+
+    # Step 2: unsharp mask — radius 1.5, strength 1.8, threshold 3
+    # Conservative settings: sharpens fine lines/text without haloing
+    img_processed = Image.fromarray(arr.astype(np.uint8))
+    img_sharpened = img_processed.filter(
+        ImageFilter.UnsharpMask(radius=1.5, percent=180, threshold=3)
+    )
+    img_sharpened.save(dst_path)
 
 
 def get_eink_image_path(filepath):
