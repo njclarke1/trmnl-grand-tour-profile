@@ -32,32 +32,50 @@ def process_for_eink(src_path, dst_path):
     Process stage profile image for e-ink display:
 
     1. Context-aware yellow recolouring:
-       - Yellow pixels on a light background (elevation fill) → mid-grey
-         so the profile shape is visible on e-ink (yellow ≈ white in greyscale)
-       - Yellow pixels near a dark background (km distance markers in the
-         black bar) → white so they remain legible on the black bar
-    2. Unsharp mask to sharpen fine text/line detail before e-ink dithering
-       softens it.
+       - Detects the solid black distance bar at the bottom of the image
+         (the horizontal band with km markers like 5.1 / 17.3 etc.)
+       - Yellow pixels within/adjacent to that bar → white (legible on black)
+       - Yellow pixels elsewhere (elevation fill) → mid-grey (visible on white)
+    2. Unsharp mask to sharpen fine text/line detail before e-ink dithering.
     """
     from PIL import ImageFilter
-    from scipy.ndimage import binary_dilation
 
     img = Image.open(src_path).convert("RGB")
     arr = np.array(img).astype(np.float32)
+    h, w = arr.shape[:2]
 
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
 
-    # Detect ASO yellow pixels
+    # Detect yellow pixels
     yellow_mask = (r > 180) & (g > 160) & (b < 150) & ((r - b) > 60) & ((g - b) > 60)
 
-    # Detect dark (black bar) regions and dilate to find nearby yellow pixels
+    # Find the solid black bar by scanning up from the bottom.
+    # It's the lowest continuous band where >60% of pixels are dark.
     dark_mask = (r < 60) & (g < 60) & (b < 60)
-    dark_nearby = binary_dilation(dark_mask, iterations=8)
+    dark_per_row = dark_mask.sum(axis=1)
+    bar_rows = []
+    for y in range(h - 1, 0, -1):
+        if dark_per_row[y] > w * 0.6:
+            bar_rows.append(y)
+        elif bar_rows:
+            break  # stop at first non-dense-dark row scanning upward
 
-    # Yellow near dark background = km marker text → white (legible on black)
-    # Yellow on light background = elevation fill → mid-grey (visible on white)
-    arr[yellow_mask & dark_nearby] = [255, 255, 255]
-    arr[yellow_mask & ~dark_nearby] = EINK_YELLOW_REPLACEMENT
+    if bar_rows:
+        # Extend 4px above bar top to catch transition/antialiased yellow pixels
+        bar_top = max(0, min(bar_rows) - 4)
+        bar_bottom = max(bar_rows)
+    else:
+        # Fallback: treat bottom 8% of image as bar zone
+        bar_top = int(h * 0.92)
+        bar_bottom = h
+
+    # Build row-based mask for the bar zone
+    bar_zone = np.zeros((h, w), dtype=bool)
+    bar_zone[bar_top:bar_bottom + 1, :] = True
+
+    # Apply context-aware recolouring
+    arr[yellow_mask & ~bar_zone] = EINK_YELLOW_REPLACEMENT   # elevation fill → grey
+    arr[yellow_mask & bar_zone] = [255, 255, 255]             # bar text → white
 
     img_processed = Image.fromarray(arr.astype(np.uint8))
     img_sharpened = img_processed.filter(
