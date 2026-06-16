@@ -1,91 +1,119 @@
 # TRMNL Grand Tour Stage Profile
 
-A [TRMNL](https://usetrmnl.com) recipe for BYOS (LaraPaper) that displays the elevation profile of the current cycling grand tour stage on your e-ink display.
+A [TRMNL](https://usetrmnl.com) BYOS recipe for [LaraPaper](https://github.com/usetrmnl/larapaper) that displays cycling Grand Tour stage elevation profiles on your e-ink display — automatically showing the right content throughout the season.
 
 Supports all three Grand Tours: **Giro d'Italia**, **Tour de France**, and **Vuelta a España**.
+
+![Countdown](assets/01-countdown.png)
+![Stage 6 — Pyrenees mountain stage](assets/02-stage-06-mountain.png)
+![Stage 19 — Alpe d'Huez](assets/03-stage-19-alpedhuez.png)
+![Stage 21 — Paris finale](assets/04-stage-21-paris.png)
+
+---
 
 ## What it shows
 
 | Scenario | Display |
 |----------|---------|
-| Stage day | That stage's elevation profile with route and distance |
+| Stage day | Elevation profile with start time and estimated finish |
 | Rest day during a tour | Next stage's profile, marked "Next up" |
 | ≤7 days before a tour | Stage 1 profile with countdown |
-| Off-season | Countdown to the next scheduled tour |
+| Off-season | Countdown to the next scheduled tour's Stage 1 |
 
-Optimised for **960×540** (M5Stack PaperS3) but works at any TRMNL-supported resolution.
+Optimised for **960×540** (M5Stack PaperS3).
+
+---
+
+## How it works
+
+A small Flask container on your NAS reads schedule JSON files, determines which stage to show, and serves both the stage metadata (as JSON) and the profile images (as processed static files) to LaraPaper's polling plugin.
+
+```
+LaraPaper → polls /api/stage → Flask container → returns JSON + image URL
+LaraPaper → renders Blade template → pushes PNG to device
+```
+
+**E-ink image processing** happens automatically on first request per image:
+- Yellow elevation fills → mid-grey (visible on white e-ink background)
+- Distance marker numbers in the black bar → white (legible on black)
+- Unsharp mask applied to sharpen fine text before e-ink dithering softens it
+- Processed images are cached — source originals are never modified
+
+---
 
 ## Requirements
 
-- TRMNL device with BYOS / [LaraPaper](https://github.com/usetrmnl/larapaper) server
-- Docker on the same host as LaraPaper
-- Stage profile images (you download these — see [Image preparation](#image-preparation))
+- TRMNL device registered in LaraPaper
+- Docker running on the same host as LaraPaper
+- Stage profile images downloaded from official tour websites (JPG or PNG)
+
+---
 
 ## Quick start
+
+Full setup instructions are in [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md).
 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/trmnl-grand-tour-profile.git
+git clone https://github.com/njclarke1/trmnl-grand-tour-profile.git
 cd trmnl-grand-tour-profile
 ```
 
-### 2. Add schedule data
+### 2. Add stage profile images
 
-Create a JSON file per tour in `data/<year>/`:
+Download elevation profile images from the official tour websites and save them to:
 
-```bash
-mkdir -p data/2026
+```
+images/2026/tour/stage-01.jpg  →  stage-21.jpg
+images/2026/giro/stage-01.jpg  →  stage-21.jpg
+images/2026/vuelta/stage-01.jpg → stage-21.jpg
 ```
 
-See [Schedule format](#schedule-format) below. An example is provided at `data/example/tour.json`.
+See [`docs/SOURCING-STAGE-DATA.md`](docs/SOURCING-STAGE-DATA.md) for where to find images and how to name them.
 
-### 3. Add stage profile images
+### 3. Configure and deploy
 
-```bash
-mkdir -p images/2026/{giro,tour,vuelta}
-```
-
-Drop your downloaded profile PNGs into the matching folder, named `stage-01.png` through `stage-21.png`. See [Image preparation](#image-preparation).
-
-### 4. Configure BASE_URL
-
-Edit `docker-compose.yml` and set `BASE_URL` to your NAS IP and the exposed port:
+Edit `docker-compose.yml` and set `BASE_URL` to your server's IP:
 
 ```yaml
 - BASE_URL=http://YOUR_NAS_IP:5051
+- CACHE_DIR=/cache
 ```
 
-### 5. Build and start
+Build and start:
 
 ```bash
-docker compose up -d --build
+docker build -t grand-tour .
+docker compose up -d
 ```
 
-Verify the API is running:
+Verify:
 
 ```bash
-curl http://localhost:5051/api/stage
+wget -q -O- http://localhost:5051/health
+wget -q -O- http://localhost:5051/api/stage | python3 -m json.tool
 ```
 
-### 6. Create LaraPaper recipe
+### 4. Create LaraPaper recipe
 
-1. Open LaraPaper admin
-2. Go to **Plugins → Create**
-3. Set **Data strategy** to `polling`
-4. Set **Polling URL** to `http://YOUR_NAS_IP:5051/api/stage`
-5. Paste the contents of `recipe/markup.html` into the **Markup** field
-6. Assign the plugin to your device
-7. Trigger a screen regeneration:
+1. Open LaraPaper admin → **Plugins → Create**
+2. Set **Data strategy** to `polling`
+3. Set **Polling URL** to `http://YOUR_NAS_IP:5051/api/stage`
+4. Set **Polling interval** to `60` (minutes)
+5. Paste the contents of `recipe/markup.blade.php` into the **Markup** field
+6. Set **Markup language** to `blade`
+7. Assign the plugin to your device
 
-```bash
-docker exec larapaper php artisan tinker \
-  --execute="App\Jobs\GenerateScreenJob::dispatchSync(App\Models\Device::first());"
-```
+See [`docs/PORTAINER-SETUP.md`](docs/PORTAINER-SETUP.md) for Portainer deployment details.
+
+---
 
 ## Schedule format
 
-Each tour needs a JSON file in `data/<year>/`. The `short` field must match the folder name under `images/`.
+The TdF 2026 schedule is included in `data/2026/tour.json` with all 21 stages and official start/finish times from [letour.fr](https://www.letour.fr).
+
+For other tours or years, create a JSON file per tour in `data/<year>/`:
 
 ```json
 {
@@ -96,11 +124,13 @@ Each tour needs a JSON file in `data/<year>/`. The `short` field must match the 
     {
       "stage": 1,
       "date": "2026-07-04",
-      "start": "Lille",
-      "finish": "Lille",
-      "type": "flat",
-      "distance_km": 185,
-      "image": "stage-01.png"
+      "start": "Barcelona",
+      "finish": "Barcelona",
+      "type": "ttt",
+      "distance_km": 19.7,
+      "image": "stage-01.jpg",
+      "start_time": "16:05",
+      "est_finish": "18:16"
     }
   ]
 }
@@ -112,56 +142,26 @@ Each tour needs a JSON file in `data/<year>/`. The `short` field must match the 
 | `short` | Yes | Folder name: `giro`, `tour`, or `vuelta` |
 | `year` | Yes | Must match the data directory name |
 | `stages[].stage` | Yes | Stage number (1–21) |
-| `stages[].date` | Yes | `YYYY-MM-DD` — rest days are omitted, not listed |
+| `stages[].date` | Yes | `YYYY-MM-DD` — omit rest days entirely |
 | `stages[].start` | Yes | Start city |
 | `stages[].finish` | Yes | Finish city |
-| `stages[].type` | No | e.g. `flat`, `hilly`, `mountain`, `itt` |
+| `stages[].type` | No | `flat`, `hilly`, `mountain`, `ttt`, `itt` |
 | `stages[].distance_km` | No | Stage distance in km |
 | `stages[].image` | Yes | Filename in `images/<year>/<short>/` |
+| `stages[].start_time` | No | Race start time in BST (displayed on screen) |
+| `stages[].est_finish` | No | Estimated finish time in BST (displayed on screen) |
 
-**Rest days**: simply don't include them. The app detects gaps between stages automatically.
+**Rest days**: omit them — the app detects gaps automatically.
 
-**Multiple tours in one year**: create separate files per tour (e.g. `giro.json`, `tour.json`, `vuelta.json`). The app loads all JSONs and sorts by date.
+See [`docs/SOURCING-STAGE-DATA.md`](docs/SOURCING-STAGE-DATA.md) for how to find and compile schedule data each season.
 
-## Image preparation
-
-Profile images are not included — you download them yourself for each tour.
-
-### Sources
-
-- Official tour websites publish stage profiles once the route is announced
-- Cycling media sites (FirstCycling, ProCyclingStats) often have clean profile graphics
-
-### Tips for e-ink
-
-- **High contrast**: profiles with strong black lines on white background display best on e-ink
-- **Resolution**: 900×400 px or larger recommended (the template scales to fit)
-- **Format**: PNG preferred
-- **Naming**: `stage-01.png` through `stage-21.png` (zero-padded)
-- **Colour**: colour images work but will render as greyscale; consider converting to greyscale + boosting contrast for best results
-
-### Folder structure
-
-```
-images/
-└── 2026/
-    ├── giro/
-    │   ├── stage-01.png
-    │   ├── stage-02.png
-    │   └── ...
-    ├── tour/
-    │   ├── stage-01.png
-    │   └── ...
-    └── vuelta/
-        ├── stage-01.png
-        └── ...
-```
+---
 
 ## API reference
 
 ### `GET /api/stage`
 
-Returns the current or next stage to display.
+Returns the current or next stage to display. Accepts an optional `?date=YYYY-MM-DD` query parameter to override today's date for testing.
 
 **Response fields:**
 
@@ -169,24 +169,32 @@ Returns the current or next stage to display.
 |-------|------|-------------|
 | `status` | string | `live`, `rest_day`, `upcoming`, `countdown`, `off_season`, `no_data` |
 | `tour` | string | Full tour name |
-| `short` | string | Short tour key |
+| `short` | string | Short tour key (`tour`, `giro`, `vuelta`) |
 | `year` | int | Tour year |
 | `stage` | int | Stage number |
 | `date` | string | Stage date (`YYYY-MM-DD`) |
 | `start` | string | Start city |
 | `finish` | string | Finish city |
 | `type` | string | Stage type |
-| `distance_km` | int | Distance in km |
-| `image_url` | string | Full URL to the profile image |
+| `distance_km` | number | Distance in km |
+| `image_url` | string | Full URL to the processed e-ink image |
 | `countdown_days` | int/null | Days until stage/tour |
+| `start_time` | string | Race start time in BST |
+| `est_finish` | string | Estimated finish time in BST |
 
 ### `GET /images/<year>/<tour>/<filename>`
 
-Serves stage profile images from the mounted volume.
+Serves e-ink-processed images (PNG). Processing is done on first request and cached. The source image is never modified.
+
+### `GET /images/original/<year>/<tour>/<filename>`
+
+Serves the original unprocessed source image for debugging.
 
 ### `GET /health`
 
 Returns `{"status": "ok"}`.
+
+---
 
 ## Display logic
 
@@ -194,55 +202,49 @@ Returns `{"status": "ok"}`.
 Is there a stage today?
   └─ Yes → Show it (status: "live")
   └─ No  → Is there a future stage?
-              └─ No  → "off_season" (all tours done)
-              └─ Yes → Is same tour already started AND next stage ≤3 days?
-                          └─ Yes → Rest day — show next stage
+              └─ No  → "off_season"
+              └─ Yes → Is same tour already started AND next stage ≤3 days away?
+                          └─ Yes → Rest day — show next stage ("rest_day")
                           └─ No  → Is next tour's Stage 1 ≤7 days away?
                                       └─ Yes → Show Stage 1 profile ("upcoming")
-                                      └─ No  → Countdown to next tour
+                                      └─ No  → Countdown to next tour ("countdown")
 ```
 
-## Portainer deployment
+---
 
-If deploying via Portainer rather than `docker compose`, you'll need to build the image first and reference it by name, or use a Portainer stack with a build context pointing at the cloned repo directory.
+## Testing stages
 
-**Option A — pre-build the image:**
+See [`docs/TINKER-TESTING.md`](docs/TINKER-TESTING.md) for how to test specific stages on your device without waiting for the real race date, including ready-to-paste tinker commands for stages 6, 19, and 21.
+
+The `?date=` query parameter is also useful for quick API checks:
 
 ```bash
-cd /path/to/trmnl-grand-tour-profile
-docker build -t grand-tour .
+wget -q -O- "http://localhost:5051/api/stage?date=2026-07-09" | python3 -m json.tool
 ```
 
-Then in Portainer, create a stack with:
-
-```yaml
-version: "3"
-services:
-  grand-tour:
-    image: grand-tour:latest
-    container_name: grand-tour
-    restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
-    ports:
-      - "5051:5000"
-    environment:
-      - TZ=Europe/London
-      - DATA_DIR=/data
-      - IMAGES_DIR=/images
-      - BASE_URL=http://YOUR_NAS_IP:5051
-    volumes:
-      - /path/to/data:/data:ro
-      - /path/to/images:/images:ro
-```
+---
 
 ## Updating for a new season
 
-1. Create `data/<year>/` and add schedule JSONs once routes are announced
-2. Download profile images into `images/<year>/<tour>/`
-3. Restart the container: `docker restart grand-tour`
+1. Add schedule JSONs to `data/YEAR/` once routes are announced
+2. Download profile images into `images/YEAR/<tour>/`
+3. On your server: `git pull && docker restart grand-tour`
 
-No code changes needed — the app scans all files in the data directory on each request.
+No rebuild needed — the container reads data and images from mounted volumes.
+
+---
+
+## Documentation
+
+| Doc | Contents |
+|-----|---------|
+| [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md) | Full setup walkthrough for non-developers |
+| [`docs/SOURCING-STAGE-DATA.md`](docs/SOURCING-STAGE-DATA.md) | How to find stage times, images, and compile schedule JSON each season |
+| [`docs/PORTAINER-SETUP.md`](docs/PORTAINER-SETUP.md) | Step-by-step Portainer deployment |
+| [`docs/TINKER-TESTING.md`](docs/TINKER-TESTING.md) | Testing specific stages via LaraPaper tinker |
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common problems and fixes |
+
+---
 
 ## Licence
 
