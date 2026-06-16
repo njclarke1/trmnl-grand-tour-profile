@@ -86,12 +86,36 @@
     justify-content: center;
     overflow: hidden;
     min-height: 0;
+    position: relative;
   }
 
   .profile-image {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+  }
+
+  .side-text {
+    position: absolute;
+    font-size: 16px;
+    font-weight: 400;
+    color: #555;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .side-text-left {
+    left: 6px;
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%) rotate(-90deg);
+    transform-origin: center center;
+  }
+
+  .side-text-right {
+    right: 6px;
+    top: 50%;
+    transform: translateX(50%) translateY(-50%) rotate(90deg);
+    transform-origin: center center;
   }
 
   /* --- COUNTDOWN LAYOUT --- */
@@ -173,6 +197,8 @@
   $distance_km = $data['distance_km'] ?? '';
   $image_url = $data['image_url'] ?? null;
   $countdown_days = $data['countdown_days'] ?? null;
+  $start_time = $data['start_time'] ?? '';
+  $est_finish = $data['est_finish'] ?? '';
 
   $tour_abbr = match($short) {
     'tour'   => 'TdF',
@@ -221,7 +247,13 @@
       <span class="stage-date">{{ $date_formatted }}</span>
     </div>
     <div class="profile-container">
+      @if (!empty($start_time))
+        <span class="side-text side-text-left">START {{ $start_time }} BST</span>
+      @endif
       <img src="{{ $image_url }}" class="profile-image" alt="Stage {{ $stage }} profile" />
+      @if (!empty($est_finish))
+        <span class="side-text side-text-right">~{{ $est_finish }} BST</span>
+      @endif
     </div>
   </div>
 </div>

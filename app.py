@@ -121,6 +121,8 @@ def build_stage_list(schedules):
                 "type": st.get("type", ""),
                 "distance_km": st.get("distance_km", 0),
                 "image": st["image"],
+                "start_time": st.get("start_time", ""),
+                "est_finish": st.get("est_finish", ""),
             })
     stages.sort(key=lambda s: (s["parsed_date"], s["stage"]))
     return stages
@@ -144,6 +146,8 @@ def make_response(status, stage, countdown_days=None, include_image=True):
         "distance_km": stage["distance_km"],
         "image_url": image_url,
         "countdown_days": countdown_days,
+        "start_time": stage.get("start_time", ""),
+        "est_finish": stage.get("est_finish", ""),
     }
 
 
