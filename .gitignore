@@ -2,7 +2,12 @@ __pycache__/
 *.pyc
 .env
 venv/
-
-# Keep example data, but real tour data is user-managed
-# Uncomment the next line if you don't want to track your stage images in git:
-# images/
+docs/BUILD-AND-SHIP.md
+# Stage profile images are copyright ASO - download from official tour websites
+images/2026/
+images/2027/
+images/2028/
+# Real tour schedule data is user-managed
+data/2026/
+data/2027/
+data/2028/
